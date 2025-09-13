@@ -270,7 +270,8 @@ export function ArticlePage() {
         headers: {
           'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
           'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
         },
         body: JSON.stringify({
           post_id: id,
@@ -284,10 +285,17 @@ export function ArticlePage() {
       }
       console.log('response', response)
 
+      // Get the comment ID from the response (now that we have return=representation)
+      const commentData = await response.json();
+      console.log('commentData', commentData);
       
       // Analyze sentiment for the new comment
-      if (id) {
-        await analyzeCommentSentiment(id, newComment.trim());
+      if (commentData && commentData[0] && commentData[0].id) {
+        console.log('Calling analyzeCommentSentiment with:', commentData[0].id, newComment.trim());
+        const sentimentResult = await analyzeCommentSentiment(commentData[0].id, newComment.trim());
+        console.log('Sentiment analysis result:', sentimentResult);
+      } else {
+        console.log('No comment data found, skipping sentiment analysis');
       }
       
 
@@ -338,7 +346,7 @@ export function ArticlePage() {
 
   // Function to get sentiment icon and styling
   const getSentimentDisplay = (sentimentLabel?: string, confidence?: number) => {
-    if (!sentimentLabel || !confidence || confidence < 0.3) {
+    if (!sentimentLabel || confidence === undefined || confidence < 0.2) {
       return null;
     }
 
@@ -376,7 +384,7 @@ export function ArticlePage() {
     
     // Calculate sentiment-based score (-1 to 1)
     let sentimentScore = 0;
-    if (article.overall_sentiment_label && article.overall_sentiment_confidence && article.overall_sentiment_confidence > 0.3) {
+    if (article.overall_sentiment_label && article.overall_sentiment_confidence && article.overall_sentiment_confidence > 0.1) {
       switch (article.overall_sentiment_label) {
         case 'true':
           sentimentScore = article.overall_sentiment_confidence;
@@ -726,7 +734,7 @@ export function ArticlePage() {
                   </div>
                   
                   {/* Sentiment Analysis */}
-                  {article.overall_sentiment_label && article.overall_sentiment_confidence && article.overall_sentiment_confidence > 0.3 && (
+                  {article.overall_sentiment_label && article.overall_sentiment_confidence && article.overall_sentiment_confidence > 0.1 && (
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-gray-600">AI Sentiment:</span>
                       <span className={`px-2 py-0.5 rounded ${

@@ -194,24 +194,30 @@ export const analyzeSentiment = async (text: string, type: 'comment' | 'post') =
 // Function to analyze comment sentiment and update database
 export const analyzeCommentSentiment = async (commentId: string, content: string) => {
   try {
+    console.log('Starting sentiment analysis for comment:', commentId, 'content:', content)
     const sentimentResult = await analyzeSentiment(content, 'comment')
-    console.log('sentimentResult', sentimentResult)
+    console.log('Sentiment analysis result:', sentimentResult)
     
-    const { error } = await supabase
+    const updateData = {
+      sentiment_score: sentimentResult.sentiment_score,
+      sentiment_label: sentimentResult.sentiment_label,
+      sentiment_confidence: sentimentResult.sentiment_confidence,
+      analyzed_at: new Date().toISOString()
+    }
+    console.log('Updating comment with data:', updateData)
+    
+    const { data, error } = await supabase
       .from('comments')
-      .update({
-        sentiment_score: sentimentResult.sentiment_score,
-        sentiment_label: sentimentResult.sentiment_label,
-        sentiment_confidence: sentimentResult.sentiment_confidence,
-        analyzed_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', commentId)
+      .select()
 
     if (error) {
       console.error('Error updating comment sentiment:', error)
       return false
     }
 
+    console.log('Successfully updated comment sentiment:', data)
     return true
   } catch (error) {
     console.error('Error analyzing comment sentiment:', error)

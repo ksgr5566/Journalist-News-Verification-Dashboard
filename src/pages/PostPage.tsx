@@ -134,15 +134,19 @@ export const PostPage: React.FC = () => {
 
       if (error) throw error
       console.log('data', data)
-      // Analyze sentiment for the new comment
+      
+      // Analyze sentiment for the new comment and wait for it to complete
       if (data && data[0] && data[0].id) {
-        console.log('data[0].id', data[0].id)
-        console.log('commentText.trim()', commentText.trim())
-        await analyzeCommentSentiment(data[0].id, commentText.trim())
+        console.log('Calling analyzeCommentSentiment with:', data[0].id, commentText.trim())
+        const sentimentSuccess = await analyzeCommentSentiment(data[0].id, commentText.trim())
+        console.log('Sentiment analysis completed:', sentimentSuccess)
+      } else {
+        console.log('No comment data found, skipping sentiment analysis')
       }
 
       setCommentText('')
-      fetchComments()
+      // Only refresh comments after sentiment analysis is complete
+      await fetchComments()
     } catch (error) {
       console.error('Error submitting comment:', error)
     } finally {
@@ -177,7 +181,7 @@ export const PostPage: React.FC = () => {
 
   // Function to get sentiment icon and styling
   const getSentimentDisplay = (sentimentLabel?: string, confidence?: number) => {
-    if (!sentimentLabel || !confidence || confidence < 0.3) {
+    if (!sentimentLabel || confidence === undefined || confidence < 0.2) {
       return null;
     }
     console.log('sentimentLabel', sentimentLabel)
@@ -203,6 +207,60 @@ export const PostPage: React.FC = () => {
         };
       default:
         return null;
+    }
+  };
+
+  // Function to calculate combined verification status
+  const getCombinedVerificationStatus = (post: Post) => {
+    const voteWeight = 0.6; // 60% weight for votes
+    const sentimentWeight = 0.4; // 40% weight for sentiment analysis
+    
+    const totalVotes = post.true_votes + post.fake_votes + post.neutral_votes;
+    
+    // Calculate vote-based score (-1 to 1)
+    const voteScore = totalVotes > 0 ? (post.true_votes - post.fake_votes) / totalVotes : 0;
+    
+    // Calculate sentiment-based score (-1 to 1)
+    let sentimentScore = 0;
+    if (post.overall_sentiment_label && post.overall_sentiment_confidence && post.overall_sentiment_confidence > 0.1) {
+      switch (post.overall_sentiment_label) {
+        case 'true':
+          sentimentScore = post.overall_sentiment_confidence;
+          break;
+        case 'fake':
+          sentimentScore = -post.overall_sentiment_confidence;
+          break;
+        case 'neutral':
+          sentimentScore = 0;
+          break;
+      }
+    }
+    
+    // Combine scores
+    const combinedScore = (voteScore * voteWeight) + (sentimentScore * sentimentWeight);
+    
+    // Determine final status
+    if (combinedScore > 0.1) {
+      return {
+        status: 'true',
+        confidence: Math.abs(combinedScore),
+        label: '✓ Verified as True',
+        className: 'bg-green-100 text-green-700'
+      };
+    } else if (combinedScore < -0.1) {
+      return {
+        status: 'fake',
+        confidence: Math.abs(combinedScore),
+        label: '✗ Marked as Fake',
+        className: 'bg-red-100 text-red-700'
+      };
+    } else {
+      return {
+        status: 'neutral',
+        confidence: 1 - Math.abs(combinedScore),
+        label: '○ Neutral',
+        className: 'bg-gray-100 text-gray-700'
+      };
     }
   };
 
@@ -311,6 +369,65 @@ export const PostPage: React.FC = () => {
               <ThumbsDown className="w-4 h-4" />
               {post.fake_votes} Fake
             </Button>
+          </div>
+
+          {/* Verification Status */}
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-2 text-sm">Verification Status</h4>
+            
+            {/* Combined Verification Status */}
+            {(() => {
+              const combinedStatus = getCombinedVerificationStatus(post);
+              return (
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-600">Combined Verification</div>
+                  <div className={`text-center px-2 py-1 rounded text-xs font-medium ${combinedStatus.className}`}>
+                    {combinedStatus.label}
+                    <span className="ml-1 text-xs opacity-75">
+                      ({Math.round(combinedStatus.confidence * 100)}%)
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+            
+            {/* Individual Analysis Breakdown */}
+            <div className="mt-2 pt-2 border-t border-gray-100 space-y-2">
+              <div className="text-xs text-gray-600">Analysis Breakdown</div>
+              
+              {/* Vote-based status */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600">Community Votes:</span>
+                <span className={`px-2 py-0.5 rounded ${
+                  post.vote_score > 0 ? 'bg-green-100 text-green-700' : 
+                  post.vote_score < 0 ? 'bg-red-100 text-red-700' : 
+                  'bg-gray-100 text-gray-700'
+                }`}>
+                  {post.vote_score > 0 ? 'True' : 
+                   post.vote_score < 0 ? 'Fake' : 
+                   'Neutral'}
+                </span>
+              </div>
+              
+              {/* Sentiment Analysis */}
+              {post.overall_sentiment_label && post.overall_sentiment_confidence && post.overall_sentiment_confidence > 0.1 && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-600">AI Sentiment:</span>
+                  <span className={`px-2 py-0.5 rounded ${
+                    post.overall_sentiment_label === 'true' ? 'bg-green-100 text-green-700' : 
+                    post.overall_sentiment_label === 'fake' ? 'bg-red-100 text-red-700' : 
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {post.overall_sentiment_label === 'true' ? 'True' : 
+                     post.overall_sentiment_label === 'fake' ? 'Fake' : 
+                     'Neutral'}
+                    <span className="ml-1 opacity-75">
+                      ({Math.round(post.overall_sentiment_confidence * 100)}%)
+                    </span>
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
