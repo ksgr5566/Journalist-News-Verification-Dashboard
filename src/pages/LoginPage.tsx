@@ -8,7 +8,7 @@ import { Label } from '../components/ui/label'
 import { Shield } from 'lucide-react'
 
 export const LoginPage: React.FC = () => {
-  const { signInWithEmail, signUpWithEmail, user } = useAuth()
+  const { signInWithEmail, signUpWithEmail, user, needsEmailVerification, resendVerificationEmail } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -17,6 +17,8 @@ export const LoginPage: React.FC = () => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false)
+  const [verificationEmail, setVerificationEmail] = useState('')
 
   // Redirect to home if user is already logged in
   useEffect(() => {
@@ -25,10 +27,35 @@ export const LoginPage: React.FC = () => {
     }
   }, [user, navigate])
 
+  // Show verification message if user needs email verification
+  useEffect(() => {
+    if (needsEmailVerification) {
+      setShowVerificationMessage(true)
+    }
+  }, [needsEmailVerification])
+
   const clearForm = () => {
     setEmail(''); setPassword(''); setFullName(''); setError(''); setSuccess('')
   }
-  const switchMode = () => { setIsSignUp(v => !v); clearForm() }
+  const switchMode = () => { 
+    setIsSignUp(v => !v); 
+    clearForm(); 
+    setShowVerificationMessage(false)
+  }
+
+  const handleResendVerification = async () => {
+    if (!verificationEmail) return
+    
+    setLoading(true)
+    try {
+      await resendVerificationEmail(verificationEmail)
+      setSuccess('Verification email sent! Please check your inbox.')
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend verification email')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const proceed = async () => {
     setError('')
@@ -49,9 +76,16 @@ export const LoginPage: React.FC = () => {
       if (isSignUp) {
         const result = await signUpWithEmail(email, password, fullName)
         console.log('Sign up result:', result)
-        if (result?.user) {
-          console.log('User created successfully')
-          setSuccess('Account created successfully! Welcome to Journalist News Verification.')
+        
+        if (result.needsVerification) {
+          console.log('User needs email verification')
+          setVerificationEmail(email)
+          setSuccess(result.message)
+          setShowVerificationMessage(true)
+          clearForm()
+        } else {
+          console.log('User created and logged in successfully')
+          setSuccess(result.message)
           clearForm()
           // Redirect after 2 seconds
           setTimeout(() => {
@@ -139,6 +173,35 @@ export const LoginPage: React.FC = () => {
             {success && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-green-600 text-sm font-medium">{success}</p>
+              </div>
+            )}
+
+            {showVerificationMessage && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-blue-800">Email Verification Required</h3>
+                    <p className="text-sm text-blue-700 mt-1">
+                      We've sent a verification link to <strong>{verificationEmail}</strong>. 
+                      Please check your email and click the link to complete your registration.
+                    </p>
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={handleResendVerification}
+                        disabled={loading}
+                        className="text-sm text-blue-600 hover:text-blue-800 underline disabled:opacity-50"
+                      >
+                        {loading ? 'Sending...' : 'Resend verification email'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

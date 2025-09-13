@@ -6,10 +6,12 @@ interface AuthContextType {
   user: User | null
   supabaseUser: SupabaseUser | null
   loading: boolean
+  needsEmailVerification: boolean
   signInWithEmail: (email: string, password: string) => Promise<void>
-  signUpWithEmail: (email: string, password: string, fullName: string) => Promise<any>
+  signUpWithEmail: (email: string, password: string, fullName: string) => Promise<{ needsVerification: boolean; message: string }>
   signOut: () => Promise<void>
   updateProfile: (updates: Partial<User>) => Promise<void>
+  resendVerificationEmail: (email: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -26,6 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null)
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [needsEmailVerification, setNeedsEmailVerification] = useState(false)
 
   useEffect(() => {
     // Get initial session
@@ -70,9 +73,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSupabaseUser(session?.user ?? null)
       
       if (session?.user) {
-        await fetchUserProfile(session.user.id)
+        // Check if user is verified
+        if (session.user.email_confirmed_at) {
+          console.log('User is verified, fetching profile')
+          setNeedsEmailVerification(false)
+          await fetchUserProfile(session.user.id)
+        } else {
+          console.log('User needs email verification')
+          setNeedsEmailVerification(true)
+          setUser(null)
+          setLoading(false)
+        }
       } else {
         setUser(null)
+        setNeedsEmailVerification(false)
         setLoading(false)
       }
     })
@@ -175,10 +189,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error
       }
 
-      // Create user profile in our users table
-      if (data.user) {
-        console.log('Creating user profile for:', data.user.id)
-        // Use direct API call to bypass RLS issues
+      // Check if user needs email verification
+      if (data.user && !data.user.email_confirmed_at) {
+        console.log('User created but needs email verification')
+        
+        // Create user profile in our users table (but don't log them in)
         try {
           const response = await fetch('https://dvvkxsppnnquhfwwbrgh.supabase.co/rest/v1/users', {
             method: 'POST',
@@ -197,21 +212,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (!response.ok) {
             console.error('Error creating user profile:', response.status, response.statusText)
-            // Don't throw here as the auth user was created successfully
           } else {
             console.log('User profile created successfully')
           }
         } catch (profileError) {
           console.error('Error creating user profile:', profileError)
-          // Don't throw here as the auth user was created successfully
         }
 
-        // Manually set the user state if auth state change doesn't fire immediately
-        setSupabaseUser(data.user)
-        await fetchUserProfile(data.user.id)
+        return {
+          needsVerification: true,
+          message: 'Please check your email and click the verification link to complete your registration.'
+        }
       }
 
-      return data
+      // If user is already verified (shouldn't happen in normal flow)
+      if (data.user && data.user.email_confirmed_at) {
+        console.log('User is already verified, logging in')
+        setSupabaseUser(data.user)
+        await fetchUserProfile(data.user.id)
+        return {
+          needsVerification: false,
+          message: 'Account created and logged in successfully.'
+        }
+      }
+
+      return {
+        needsVerification: true,
+        message: 'Please check your email and click the verification link to complete your registration.'
+      }
     } catch (error: any) {
       console.error('Error signing up with email:', error)
       // Provide more user-friendly error messages
@@ -253,14 +281,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
+  const resendVerificationEmail = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      })
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error resending verification email:', error)
+      throw error
+    }
+  }
+
   const value = {
     user,
     supabaseUser,
     loading,
+    needsEmailVerification,
     signInWithEmail,
     signUpWithEmail,
     signOut,
     updateProfile,
+    resendVerificationEmail,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
