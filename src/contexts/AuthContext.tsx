@@ -98,10 +98,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Fetching user profile for:', userId)
       // Use direct API call to bypass RLS issues
-      const response = await fetch(`https://dvvkxsppnnquhfwwbrgh.supabase.co/rest/v1/users?id=eq.${userId}&select=*`, {
+      const response = await fetch(`https://aaiqklqnzamkpxudrqhz.supabase.co/rest/v1/users?id=eq.${userId}&select=*`, {
         headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ'
         }
       })
 
@@ -195,11 +195,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Create user profile in our users table (but don't log them in)
         try {
-          const response = await fetch('https://dvvkxsppnnquhfwwbrgh.supabase.co/rest/v1/users', {
+          const response = await fetch('https://aaiqklqnzamkpxudrqhz.supabase.co/rest/v1/users', {
             method: 'POST',
             headers: {
-              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
-              'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
+              'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({

@@ -19,10 +19,10 @@ export function Sidebar() {
   const fetchTopics = async () => {
     try {
       console.log('🔍 Sidebar: Fetching topics using direct API...')
-      const response = await fetch('https://dvvkxsppnnquhfwwbrgh.supabase.co/rest/v1/topics?select=*&order=name', {
+      const response = await fetch('https://aaiqklqnzamkpxudrqhz.supabase.co/rest/v1/topics?select=*&order=name', {
         headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ'
         }
       })
 

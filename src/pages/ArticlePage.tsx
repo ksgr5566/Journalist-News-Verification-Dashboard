@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, ThumbsUp, ThumbsDown, Minus, Share2, Bookmark } from 'lucide-react';
+import { ArrowLeft, MessageCircle, ThumbsUp, ThumbsDown, Minus, Share2, Bookmark, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
+import { analyzeCommentSentiment } from '../lib/supabase';
 
 interface ArticleData {
   id: string;
@@ -27,6 +28,11 @@ interface ArticleData {
   neutral_votes: number;
   comments_count: number;
   vote_score: number;
+  // Sentiment analysis fields
+  overall_sentiment_score?: number;
+  overall_sentiment_label?: 'true' | 'fake' | 'neutral';
+  overall_sentiment_confidence?: number;
+  sentiment_analyzed_at?: string;
 }
 
 export function ArticlePage() {
@@ -58,10 +64,10 @@ export function ArticlePage() {
       console.log('🔍 Fetching article:', id);
 
       // Fetch article with all related data
-      const response = await fetch(`https://dvvkxsppnnquhfwwbrgh.supabase.co/rest/v1/posts?id=eq.${id}&select=*,author:users(*),topic:topics(*)`, {
+      const response = await fetch(`https://aaiqklqnzamkpxudrqhz.supabase.co/rest/v1/posts?id=eq.${id}&select=*,author:users(*),topic:topics(*)`, {
         headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ'
         }
       });
 
@@ -85,10 +91,10 @@ export function ArticlePage() {
 
   const fetchComments = async () => {
     try {
-      const response = await fetch(`https://dvvkxsppnnquhfwwbrgh.supabase.co/rest/v1/comments?post_id=eq.${id}&select=*,author:users(full_name,avatar_url)&order=created_at.desc`, {
+      const response = await fetch(`https://aaiqklqnzamkpxudrqhz.supabase.co/rest/v1/comments?post_id=eq.${id}&select=*,author:users(full_name,avatar_url)&order=created_at.desc`, {
         headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ'
         }
       });
 
@@ -146,10 +152,10 @@ export function ArticlePage() {
     if (!user || !id) return;
 
     try {
-      const response = await fetch(`https://dvvkxsppnnquhfwwbrgh.supabase.co/rest/v1/votes?post_id=eq.${id}&user_id=eq.${user.id}`, {
+      const response = await fetch(`https://aaiqklqnzamkpxudrqhz.supabase.co/rest/v1/votes?post_id=eq.${id}&user_id=eq.${user.id}`, {
         headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ'
         }
       });
 
@@ -181,10 +187,10 @@ export function ArticlePage() {
       console.log('Voting:', voteType, 'for article:', id);
 
       // First, check if user already voted
-      const existingVoteResponse = await fetch(`https://dvvkxsppnnquhfwwbrgh.supabase.co/rest/v1/votes?post_id=eq.${id}&user_id=eq.${user.id}`, {
+      const existingVoteResponse = await fetch(`https://aaiqklqnzamkpxudrqhz.supabase.co/rest/v1/votes?post_id=eq.${id}&user_id=eq.${user.id}`, {
         headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ'
         }
       });
 
@@ -193,11 +199,11 @@ export function ArticlePage() {
 
       if (existingVote) {
         // Update existing vote
-        const updateResponse = await fetch(`https://dvvkxsppnnquhfwwbrgh.supabase.co/rest/v1/votes?id=eq.${existingVote.id}`, {
+        const updateResponse = await fetch(`https://aaiqklqnzamkpxudrqhz.supabase.co/rest/v1/votes?id=eq.${existingVote.id}`, {
           method: 'PATCH',
           headers: {
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -210,11 +216,11 @@ export function ArticlePage() {
         }
       } else {
         // Create new vote
-        const createResponse = await fetch('https://dvvkxsppnnquhfwwbrgh.supabase.co/rest/v1/votes', {
+        const createResponse = await fetch('https://aaiqklqnzamkpxudrqhz.supabase.co/rest/v1/votes', {
           method: 'POST',
           headers: {
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -259,11 +265,11 @@ export function ArticlePage() {
       setSubmittingComment(true);
       console.log('Submitting comment:', newComment);
 
-      const response = await fetch('https://dvvkxsppnnquhfwwbrgh.supabase.co/rest/v1/comments', {
+      const response = await fetch('https://aaiqklqnzamkpxudrqhz.supabase.co/rest/v1/comments', {
         method: 'POST',
         headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dmt4c3Bwbm5xdWhmd3dicmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NDg0MzksImV4cCI6MjA3MzMyNDQzOX0.oEdAIwHqfcf4yo_GVszmxUxkjHqf-QxXiTNwfuBZKSI',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaXFrbHFuemFta3B4dWRycWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODQzOTMsImV4cCI6MjA3MzM2MDM5M30.asM5Sxs_2ow6lFokPmZ8Lmh1ici7TK3aLf4PHzNkTPQ',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -276,6 +282,14 @@ export function ArticlePage() {
       if (!response.ok) {
         throw new Error('Failed to submit comment');
       }
+      console.log('response', response)
+
+      
+      // Analyze sentiment for the new comment
+      if (id) {
+        await analyzeCommentSentiment(id, newComment.trim());
+      }
+      
 
       // Clear the comment input
       setNewComment('');
@@ -321,6 +335,88 @@ export function ArticlePage() {
   const truePercentage = totalVotes > 0 ? Math.round((article.true_votes / totalVotes) * 100) : 0;
   const fakePercentage = totalVotes > 0 ? Math.round((article.fake_votes / totalVotes) * 100) : 0;
   const neutralPercentage = totalVotes > 0 ? Math.round((article.neutral_votes / totalVotes) * 100) : 0;
+
+  // Function to get sentiment icon and styling
+  const getSentimentDisplay = (sentimentLabel?: string, confidence?: number) => {
+    if (!sentimentLabel || !confidence || confidence < 0.3) {
+      return null;
+    }
+
+    switch (sentimentLabel) {
+      case 'supporting':
+        return {
+          icon: <CheckCircle className="w-3 h-3" />,
+          text: 'Supporting',
+          className: 'bg-green-100 text-green-700 border-green-200'
+        };
+      case 'claiming_fake':
+        return {
+          icon: <XCircle className="w-3 h-3" />,
+          text: 'Claiming Fake',
+          className: 'bg-red-100 text-red-700 border-red-200'
+        };
+      case 'neutral':
+        return {
+          icon: <AlertCircle className="w-3 h-3" />,
+          text: 'Neutral',
+          className: 'bg-gray-100 text-gray-700 border-gray-200'
+        };
+      default:
+        return null;
+    }
+  };
+
+  // Function to calculate combined verification status
+  const getCombinedVerificationStatus = () => {
+    const voteWeight = 0.6; // 60% weight for votes
+    const sentimentWeight = 0.4; // 40% weight for sentiment analysis
+    
+    // Calculate vote-based score (-1 to 1)
+    const voteScore = totalVotes > 0 ? (article.true_votes - article.fake_votes) / totalVotes : 0;
+    
+    // Calculate sentiment-based score (-1 to 1)
+    let sentimentScore = 0;
+    if (article.overall_sentiment_label && article.overall_sentiment_confidence && article.overall_sentiment_confidence > 0.3) {
+      switch (article.overall_sentiment_label) {
+        case 'true':
+          sentimentScore = article.overall_sentiment_confidence;
+          break;
+        case 'fake':
+          sentimentScore = -article.overall_sentiment_confidence;
+          break;
+        case 'neutral':
+          sentimentScore = 0;
+          break;
+      }
+    }
+    
+    // Combine scores
+    const combinedScore = (voteScore * voteWeight) + (sentimentScore * sentimentWeight);
+    
+    // Determine final status
+    if (combinedScore > 0.1) {
+      return {
+        status: 'true',
+        confidence: Math.abs(combinedScore),
+        label: '✓ Verified as True',
+        className: 'bg-green-100 text-green-700'
+      };
+    } else if (combinedScore < -0.1) {
+      return {
+        status: 'fake',
+        confidence: Math.abs(combinedScore),
+        label: '✗ Marked as Fake',
+        className: 'bg-red-100 text-red-700'
+      };
+    } else {
+      return {
+        status: 'neutral',
+        confidence: 1 - Math.abs(combinedScore),
+        label: '○ Neutral',
+        className: 'bg-gray-100 text-gray-700'
+      };
+    }
+  };
 
   return (
     <div className="h-screen bg-gray-50 overflow-y-auto">
@@ -524,22 +620,31 @@ export function ArticlePage() {
                 </div>
                 
                 {comments.length > 0 && (
-                  comments.map((comment) => (
-                    <div key={comment.id} className="p-3">
-                      <div className="flex items-start space-x-2">
-                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
-                          {comment.author?.full_name?.charAt(0) || 'A'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-1 mb-1">
-                            <span className="text-xs font-medium text-gray-900">{comment.author?.full_name || 'Anonymous'}</span>
-                            <span className="text-xs text-gray-500">{new Date(comment.created_at).toLocaleDateString()}</span>
+                  comments.map((comment) => {
+                    const sentimentDisplay = getSentimentDisplay(comment.sentiment_label, comment.sentiment_confidence);
+                    return (
+                      <div key={comment.id} className="p-3">
+                        <div className="flex items-start space-x-2">
+                          <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                            {comment.author?.full_name?.charAt(0) || 'A'}
                           </div>
-                          <p className="text-xs text-gray-800 leading-relaxed">{comment.content}</p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-1 mb-1">
+                              <span className="text-xs font-medium text-gray-900">{comment.author?.full_name || 'Anonymous'}</span>
+                              <span className="text-xs text-gray-500">{new Date(comment.created_at).toLocaleDateString()}</span>
+                              {sentimentDisplay && (
+                                <div className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs border ${sentimentDisplay.className}`}>
+                                  {sentimentDisplay.icon}
+                                  <span>{sentimentDisplay.text}</span>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-800 leading-relaxed">{comment.content}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -586,14 +691,58 @@ export function ArticlePage() {
               </div>
               
               <div className="mt-3 pt-2 border-t border-gray-100">
-                <div className={`text-center px-2 py-1 rounded text-xs font-medium ${
-                  article.vote_score > 0 ? 'bg-green-100 text-green-700' : 
-                  article.vote_score < 0 ? 'bg-red-100 text-red-700' : 
-                  'bg-gray-100 text-gray-700'
-                }`}>
-                  {article.vote_score > 0 ? '✓ Verified as True' : 
-                   article.vote_score < 0 ? '✗ Marked as Fake' : 
-                   '○ Neutral'}
+                {/* Combined Verification Status */}
+                {(() => {
+                  const combinedStatus = getCombinedVerificationStatus();
+                  return (
+                    <div className="space-y-2">
+                      <div className="text-xs text-gray-600">Combined Verification</div>
+                      <div className={`text-center px-2 py-1 rounded text-xs font-medium ${combinedStatus.className}`}>
+                        {combinedStatus.label}
+                        <span className="ml-1 text-xs opacity-75">
+                          ({Math.round(combinedStatus.confidence * 100)}%)
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+                
+                {/* Individual Analysis Breakdown */}
+                <div className="mt-2 pt-2 border-t border-gray-100 space-y-2">
+                  <div className="text-xs text-gray-600">Analysis Breakdown</div>
+                  
+                  {/* Vote-based status */}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Community Votes:</span>
+                    <span className={`px-2 py-0.5 rounded ${
+                      article.vote_score > 0 ? 'bg-green-100 text-green-700' : 
+                      article.vote_score < 0 ? 'bg-red-100 text-red-700' : 
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {article.vote_score > 0 ? 'True' : 
+                       article.vote_score < 0 ? 'Fake' : 
+                       'Neutral'}
+                    </span>
+                  </div>
+                  
+                  {/* Sentiment Analysis */}
+                  {article.overall_sentiment_label && article.overall_sentiment_confidence && article.overall_sentiment_confidence > 0.3 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-600">AI Sentiment:</span>
+                      <span className={`px-2 py-0.5 rounded ${
+                        article.overall_sentiment_label === 'true' ? 'bg-green-100 text-green-700' : 
+                        article.overall_sentiment_label === 'fake' ? 'bg-red-100 text-red-700' : 
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {article.overall_sentiment_label === 'true' ? 'True' : 
+                         article.overall_sentiment_label === 'fake' ? 'Fake' : 
+                         'Neutral'}
+                        <span className="ml-1 opacity-75">
+                          ({Math.round(article.overall_sentiment_confidence * 100)}%)
+                        </span>
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

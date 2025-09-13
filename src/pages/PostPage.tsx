@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { supabase, Post, Comment } from '../lib/supabase'
+import { supabase, Post, Comment, analyzeCommentSentiment } from '../lib/supabase'
 import { Button } from '../components/ui/button'
 import { Textarea } from '../components/ui/textarea'
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar'
 import { Badge } from '../components/ui/badge'
 import { Card, CardContent, CardHeader } from '../components/ui/card'
-import { ThumbsUp, ThumbsDown, Minus, MessageCircle, Reply, ArrowLeft } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, Minus, MessageCircle, Reply, ArrowLeft, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 export const PostPage: React.FC = () => {
@@ -123,15 +123,23 @@ export const PostPage: React.FC = () => {
     try {
       setSubmittingComment(true)
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('comments')
         .insert({
           content: commentText.trim(),
           post_id: post.id,
           author_id: user.id
         })
+        .select()
 
       if (error) throw error
+      console.log('data', data)
+      // Analyze sentiment for the new comment
+      if (data && data[0] && data[0].id) {
+        console.log('data[0].id', data[0].id)
+        console.log('commentText.trim()', commentText.trim())
+        await analyzeCommentSentiment(data[0].id, commentText.trim())
+      }
 
       setCommentText('')
       fetchComments()
@@ -166,6 +174,37 @@ export const PostPage: React.FC = () => {
       return `${baseStyle} ${isActive ? 'bg-yellow-100 text-yellow-700 border border-yellow-300' : 'bg-gray-100 text-gray-700 hover:bg-yellow-50'}`
     }
   }
+
+  // Function to get sentiment icon and styling
+  const getSentimentDisplay = (sentimentLabel?: string, confidence?: number) => {
+    if (!sentimentLabel || !confidence || confidence < 0.3) {
+      return null;
+    }
+    console.log('sentimentLabel', sentimentLabel)
+    console.log('confidence', confidence)
+    switch (sentimentLabel) {
+      case 'supporting':
+        return {
+          icon: <CheckCircle className="w-3 h-3" />,
+          text: 'Supporting',
+          className: 'bg-green-100 text-green-700 border-green-200'
+        };
+      case 'claiming_fake':
+        return {
+          icon: <XCircle className="w-3 h-3" />,
+          text: 'Claiming Fake',
+          className: 'bg-red-100 text-red-700 border-red-200'
+        };
+      case 'neutral':
+        return {
+          icon: <AlertCircle className="w-3 h-3" />,
+          text: 'Neutral',
+          className: 'bg-gray-100 text-gray-700 border-gray-200'
+        };
+      default:
+        return null;
+    }
+  };
 
   if (loading) {
     return (
@@ -318,29 +357,38 @@ export const PostPage: React.FC = () => {
             {comments.length === 0 ? (
               <p className="text-gray-500 text-center py-8">No comments yet. Be the first to share your thoughts!</p>
             ) : (
-              comments.map((comment) => (
-                <div key={comment.id} className="flex gap-3">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={comment.author?.avatar_url} />
-                    <AvatarFallback>
-                      {comment.author?.full_name?.charAt(0) || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-gray-900">
-                          {comment.author?.full_name || 'Anonymous'}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
-                        </span>
+              comments.map((comment) => {
+                const sentimentDisplay = getSentimentDisplay(comment.sentiment_label, comment.sentiment_confidence);
+                return (
+                  <div key={comment.id} className="flex gap-3">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={comment.author?.avatar_url} />
+                      <AvatarFallback>
+                        {comment.author?.full_name?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-gray-900">
+                            {comment.author?.full_name || 'Anonymous'}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                          </span>
+                          {sentimentDisplay && (
+                            <div className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs border ${sentimentDisplay.className}`}>
+                              {sentimentDisplay.icon}
+                              <span>{sentimentDisplay.text}</span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
                       </div>
-                      <p className="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </CardContent>

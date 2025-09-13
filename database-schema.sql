@@ -51,7 +51,12 @@ CREATE TABLE posts (
   true_votes INTEGER DEFAULT 0,
   fake_votes INTEGER DEFAULT 0,
   neutral_votes INTEGER DEFAULT 0,
-  comments_count INTEGER DEFAULT 0
+  comments_count INTEGER DEFAULT 0,
+  -- Sentiment analysis fields for overall post sentiment
+  overall_sentiment_score REAL DEFAULT 0.0, -- -1.0 to 1.0 (negative to positive)
+  overall_sentiment_label TEXT CHECK (overall_sentiment_label IN ('true', 'fake', 'neutral')),
+  overall_sentiment_confidence REAL DEFAULT 0.0, -- 0.0 to 1.0
+  sentiment_analyzed_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Create comments table
@@ -62,7 +67,12 @@ CREATE TABLE comments (
   author_id UUID REFERENCES users(id) ON DELETE CASCADE,
   parent_id UUID REFERENCES comments(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  -- Sentiment analysis fields
+  sentiment_score REAL DEFAULT 0.0, -- -1.0 to 1.0 (negative to positive)
+  sentiment_label TEXT CHECK (sentiment_label IN ('supporting', 'claiming_fake', 'neutral')),
+  sentiment_confidence REAL DEFAULT 0.0, -- 0.0 to 1.0
+  analyzed_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Create votes table
@@ -152,6 +162,47 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trigger_update_post_comment_count
   AFTER INSERT OR DELETE ON comments
   FOR EACH ROW EXECUTE FUNCTION update_post_comment_count();
+
+-- Create function to update post sentiment based on comments
+CREATE OR REPLACE FUNCTION update_post_sentiment()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Update post sentiment when comments are added/updated/deleted
+  UPDATE posts 
+  SET 
+    overall_sentiment_score = (
+      SELECT COALESCE(AVG(sentiment_score), 0.0) 
+      FROM comments 
+      WHERE post_id = COALESCE(NEW.post_id, OLD.post_id)
+      AND sentiment_score IS NOT NULL
+    ),
+    overall_sentiment_label = (
+      SELECT CASE 
+        WHEN AVG(sentiment_score) > 0.1 THEN 'true'
+        WHEN AVG(sentiment_score) < -0.1 THEN 'fake'
+        ELSE 'neutral'
+      END
+      FROM comments 
+      WHERE post_id = COALESCE(NEW.post_id, OLD.post_id)
+      AND sentiment_score IS NOT NULL
+    ),
+    overall_sentiment_confidence = (
+      SELECT COALESCE(AVG(sentiment_confidence), 0.0)
+      FROM comments 
+      WHERE post_id = COALESCE(NEW.post_id, OLD.post_id)
+      AND sentiment_confidence IS NOT NULL
+    ),
+    sentiment_analyzed_at = NOW()
+  WHERE id = COALESCE(NEW.post_id, OLD.post_id);
+  
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger for post sentiment updates
+CREATE TRIGGER trigger_update_post_sentiment
+  AFTER INSERT OR UPDATE OR DELETE ON comments
+  FOR EACH ROW EXECUTE FUNCTION update_post_sentiment();
 
 -- Create function to update user reputation
 CREATE OR REPLACE FUNCTION update_user_reputation()
