@@ -268,7 +268,7 @@ export function ArticlePage() {
         },
         body: JSON.stringify({
           post_id: id,
-          user_id: user.id,
+          author_id: user.id,
           content: newComment.trim()
         })
       });
@@ -445,9 +445,19 @@ export function ArticlePage() {
                         type="submit" 
                         size="sm" 
                         disabled={submittingComment || !newComment.trim()}
-                        className="bg-blue-600 hover:bg-blue-700 text-xs h-7 px-3 disabled:opacity-50"
+                        className="!bg-gradient-to-r !from-blue-500 !to-blue-600 hover:!from-blue-600 hover:!to-blue-700 !text-white text-xs h-8 px-6 rounded-full shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:transform-none disabled:shadow-none font-medium border-0"
                       >
-                        {submittingComment ? 'Posting...' : 'Comment'}
+                        {submittingComment ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Posting...
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <MessageCircle className="w-3 h-3" />
+                            Post Comment
+                          </div>
+                        )}
                       </Button>
                     </div>
                   </form>
